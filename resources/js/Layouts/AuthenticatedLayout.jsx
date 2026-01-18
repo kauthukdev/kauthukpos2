@@ -5,20 +5,26 @@ import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import SideBar from './SideBar';
+import FlashMessage from '@/Components/FlashMessage';
 
 export default function AuthenticatedLayout({ header, children }) {
     // usePage is a hook from the Inertia.js library that provides access to the current page's props and state. 
     // Here, we are extracting the authenticated user's information from the page props.
     const user = usePage().props.auth.user;
+
+    // Debug permissions
+    console.log('Authenticated User:', user);
+    console.log('User Permissions:', user?.permissions);
+
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
     return (
         <div className="min-h-screen bg-gray-100">
+            <FlashMessage />
             {/* Top Navigation */}
-            <nav className={`fixed right-0 top-0 z-40 border-b border-gray-100 bg-white transition-all duration-300 ${
-                sidebarOpen ? 'left-64' : 'left-0'
-            }`}>
+            <nav className={`fixed right-0 top-0 z-40 border-b border-gray-100 bg-white transition-all duration-300 ${sidebarOpen ? 'left-64' : 'left-0'
+                }`}>
                 <div className="mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
                         <div className="flex items-center">
@@ -186,9 +192,8 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 {/* Main Content */}
                 <div
-                    className={`flex-1 transition-all duration-300 ${
-                        sidebarOpen ? 'ml-64' : 'ml-0'
-                    }`}
+                    className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'
+                        }`}
                 >
                     <div className="pt-16"> {/* Add padding top to account for fixed header */}
                         {header && (

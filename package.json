@@ -21,6 +21,8 @@
         "vite": "^6.0"
     },
     "dependencies": {
-        "sweetalert2": "^11.15.10"
+        "date-fns": "^4.1.0",
+        "react-select": "^5.10.1",
+        "sweetalert2": "^11.17.2"
     }
 }

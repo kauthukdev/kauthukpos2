@@ -27,5 +27,34 @@ return Application::configure(basePath: dirname(__DIR__))
         ])
     }) */
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->respond(function (Symfony\Component\HttpFoundation\Response $response) {
+            if ($response->getStatusCode() === 419) {
+                return back()->with([
+                    'message' => 'The page expired, please try again.',
+                ]);
+            }
+ 
+            return $response;
+        });
+
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            $statusCode = 500;
+
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) {
+                $statusCode = $e->getStatusCode();
+            } elseif ($e instanceof \Illuminate\Auth\Access\AuthorizationException) {
+                $statusCode = 403;
+            }
+
+            if (in_array($statusCode, [500, 503, 404, 403])) {
+                 return \Inertia\Inertia::render('Error', [
+                     'status' => $statusCode,
+                     'message' => $e->getMessage(),
+                 ])
+                    ->toResponse($request)
+                    ->setStatusCode($statusCode);
+            }
+            
+            return null;
+        });
     })->create();
