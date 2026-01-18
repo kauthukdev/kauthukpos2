@@ -117,8 +117,8 @@ class ProductController extends Controller
                 $file = $request->file('image');
                 $fileName = time() . '_' . $file->getClientOriginalName();
                 // Use storage driver to store the file
-                $path = $file->storeAs('images', $fileName, 'public');
-                $imagePath = $path; // This will return 'images/filename.ext' relative to storage/app/public
+                $path = $file->storeAs('product_images', $fileName, 'public');
+                $imagePath = $path; // This will return 'product_images/filename.ext' relative to storage/app/public
                 
                 \Log::info('Image stored successfully at: ' . $imagePath);
                 
@@ -281,8 +281,8 @@ class ProductController extends Controller
                     $file = $request->file('image');
                     $fileName = time() . '_' . $file->getClientOriginalName();
                     
-                    $path = $file->storeAs('images', $fileName, 'public');
-                    $updateData['image'] = $path; // 'images/filename.ext'
+                    $path = $file->storeAs('product_images', $fileName, 'public');
+                    $updateData['image'] = $path; // 'product_images/filename.ext'
                     
                     \Log::info('New image stored at: ' . $updateData['image']);
                     
