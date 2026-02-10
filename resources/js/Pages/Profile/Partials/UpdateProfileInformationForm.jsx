@@ -54,6 +54,16 @@ export default function UpdateProfileInformation({
                 </div>
 
                 <div>
+                    <InputLabel value="Role" />
+
+                    <TextInput
+                        className="mt-1 block w-full bg-gray-100 text-gray-500 cursor-not-allowed"
+                        value={user.assigned_roles ? user.assigned_roles.join(', ') : 'No Role'}
+                        disabled
+                    />
+                </div>
+
+                <div>
                     <InputLabel htmlFor="email" value="Email" />
 
                     <TextInput

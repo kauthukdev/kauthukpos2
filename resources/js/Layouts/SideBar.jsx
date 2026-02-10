@@ -6,6 +6,7 @@ export default function SideBar({ isOpen, setIsOpen, showToggle = true }) {
     const { url } = usePage();
     const [usersMenuOpen, setUsersMenuOpen] = useState(false);
     const [productMenuOpen, setProductMenuOpen] = useState(false);
+    const [salesMenuOpen, setSalesMenuOpen] = useState(false);
     const roleID = usePage().props.auth.user.role_id;
     const isAdmin = roleID === 1;
     // Auto expand users menu when on users routes
@@ -15,6 +16,9 @@ export default function SideBar({ isOpen, setIsOpen, showToggle = true }) {
         }
         if (url.startsWith('/product')){
             setProductMenuOpen(true);
+        }
+        if (url.startsWith('/sales')){
+            setSalesMenuOpen(true);
         }
     }, [url]);
 
@@ -60,7 +64,7 @@ export default function SideBar({ isOpen, setIsOpen, showToggle = true }) {
                 {/* Logo Section */}
                 <div className="flex h-16 items-center justify-center border-b border-gray-700">
                     <Link href={route('dashboard')}>
-                        <ApplicationLogo className="block h-9 w-auto fill-[#7267ef]" />
+                        <ApplicationLogo className="block h-9 w-auto" />
                     </Link>
                 </div>
 
@@ -233,22 +237,97 @@ export default function SideBar({ isOpen, setIsOpen, showToggle = true }) {
                                 productMenuOpen ? 'block' : 'hidden'
                             }`}
                         >
-   
                             <Link
-                                href={route('products.category')}
+                                href={route('products.category.index')}
                                 className={`block w-full rounded-lg px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-700 hover:text-white ${
-                                    route().current('product.category') ? 'bg-gray-700 text-white' : ''
+                                    route().current('products.category.index') ? 'bg-gray-700 text-white' : ''
                                 }`}
                             >
                                 Categories
                             </Link>
                             <Link
-                                href={route('users.index')}
+                                href={route('products.index')}
                                 className={`block w-full rounded-lg px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-700 hover:text-white ${
-                                    route().current('users.index') ? 'bg-gray-700 text-white' : ''
+                                    route().current('products.index') ? 'bg-gray-700 text-white' : ''
                                 }`}
                             >
-                                List Users
+                                List Products
+                            </Link>
+                            <Link
+                                href={route('products.create')}
+                                className={`block w-full rounded-lg px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-700 hover:text-white ${
+                                    route().current('products.create') ? 'bg-gray-700 text-white' : ''
+                                }`}
+                            >
+                                Add Product
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Manage Sales Menu */}
+                    <div>
+                        <button
+                            onClick={() => setSalesMenuOpen(!salesMenuOpen)}
+                            className={`group flex w-full items-center justify-between rounded-lg px-4 py-2 text-white transition-colors hover:bg-gray-700 ${
+                                url.startsWith('/sales') ? 'bg-[#7267ef]' : ''
+                            }`}
+                        >
+                            <div className="flex items-center">
+                                <div className="relative">
+                                    <svg
+                                        className="mr-3 h-5 w-5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                </div>
+                                <span>Manage Sales</span>
+                            </div>
+                            <svg
+                                className={`h-5 w-5 transform transition-transform duration-200 ${
+                                    salesMenuOpen ? 'rotate-90' : ''
+                                }`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M9 5l7 7-7 7"
+                                />
+                            </svg>
+                        </button>
+
+                        {/* Sales Submenu */}
+                        <div
+                            className={`mt-2 space-y-2 pl-4 transition-all duration-200 ${
+                                salesMenuOpen ? 'block' : 'hidden'
+                            }`}
+                        >
+                            <Link
+                                href={route('sales.index')}
+                                className={`block w-full rounded-lg px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-700 hover:text-white ${
+                                    route().current('sales.index') ? 'bg-gray-700 text-white' : ''
+                                }`}
+                            >
+                                List Sales
+                            </Link>
+                            <Link
+                                href={route('sales.create')}
+                                className={`block w-full rounded-lg px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-700 hover:text-white ${
+                                    route().current('sales.create') ? 'bg-gray-700 text-white' : ''
+                                }`}
+                            >
+                                Add Sale
                             </Link>
                         </div>
                     </div>

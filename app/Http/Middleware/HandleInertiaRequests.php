@@ -32,8 +32,20 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user() ? array_merge($request->user()->toArray(), ['role_id' => session('role_id')]) 
-                : null
+                'user' => $request->user() ? function () use ($request) {
+                    $user = $request->user()->load('roles.permissions');
+                    return array_merge($user->toArray(), [
+                        'role_id' => session('role_id'), // Keep existing just in case
+                        'assigned_roles' => $user->roles->pluck('name'),
+                        'permissions' => $user->roles->flatMap->permissions->pluck('permission_code')->unique()->values()
+                    ]);
+                } : null
+            ],
+            'flash' => [
+                'message' => session('message'),
+                'error' => session('error'),
+                'success' => session('success'),
+                'download_url' => session('download_url'),
             ],
         ];
     }

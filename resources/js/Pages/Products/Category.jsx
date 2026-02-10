@@ -3,7 +3,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 
-export default function Category({ auth, users }) {
+export default function Category({ auth, categories }) {
     const [searchTerm, setSearchTerm] = useState('');
     const { flash } = usePage().props;
     const roleID = usePage().props.auth.user.role_id;
@@ -19,12 +19,11 @@ export default function Category({ auth, users }) {
         }
     }, [flash]);
 
-    const filteredUsers = users.data.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredCategories = categories.data.filter(category =>
+        category.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleDelete = (userId) => {
+    const handleDelete = (categoryId) => {
         Swal.fire({
             title: 'Are you sure?',
             text: "You won't be able to revert this!",
@@ -35,12 +34,12 @@ export default function Category({ auth, users }) {
             confirmButtonText: 'Yes, delete it!'
         }).then((result) => {
             if (result.isConfirmed) {
-                router.delete(route('users.destroy', userId), {
+                router.delete(route('products.category.destroy', categoryId), {
                     onSuccess: () => {
                         Swal.fire({
                             icon: 'success',
                             title: 'Deleted!',
-                            text: 'User has been deleted.',
+                            text: 'Category has been deleted.',
                             confirmButtonText: 'OK',
                         });
                     },
@@ -53,11 +52,11 @@ export default function Category({ auth, users }) {
         <AuthenticatedLayout
             user={auth.user}
             header={
-                isAdmin && (
+                (auth.user.permissions.includes('PRODUCT_CREATE') || isAdmin) && (
                     <div className="flex justify-between items-center">
                         <h2 className="font-semibold text-xl text-gray-800 leading-tight">Categories</h2>
                         <Link
-                            href={route('users.create')}
+                            href={route('products.category.add')}
                             className="px-4 py-2 bg-[#7267ef] text-white rounded-lg hover:bg-[#6357df] focus:bg-[#6357df] transition-colors"
                         >
                             Add Category
@@ -74,14 +73,14 @@ export default function Category({ auth, users }) {
                             <div className="mb-6">
                                 <input
                                     type="text"
-                                    placeholder="Search users..."
+                                    placeholder="Search categories..."
                                     className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-[#7267ef] focus:ring focus:ring-[#7267ef] focus:ring-opacity-50"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
 
-                            {/* Users Table */}
+                            {/* Categories Table */}
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50">
@@ -90,63 +89,42 @@ export default function Category({ auth, users }) {
                                                 Name
                                             </th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Email
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Roles
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Joined Date
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Actions
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {filteredUsers.map((user) => (
-                                            <tr key={user.id} className="hover:bg-gray-50">
+                                        {filteredCategories.map((category) => (
+                                            <tr key={category.id} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="text-sm font-medium text-gray-900">
-                                                        {user.name}
+                                                        {category.name}
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-500">
-                                                        {user.email}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {user.roles.length > 0 && (
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#7267ef] text-white">
-                                                                {user.roles[0].name}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {new Date(user.created_at).toLocaleDateString()}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                    {isAdmin ? (
-                                                        <>
+                                                    <div className="flex items-center space-x-4">
+                                                        {(auth.user.permissions.includes('PRODUCT_EDIT') || isAdmin) && (
                                                             <Link
-                                                                href={route('users.edit', user.id)}
-                                                                className="text-[#7267ef] hover:text-[#6357df] mr-4"
+                                                                href={route('products.category.edit', category.id)}
+                                                                className="text-[#7267ef] hover:text-[#6357df]"
                                                             >
                                                                 Edit
                                                             </Link>
+                                                        )}
+
+                                                        {(auth.user.permissions.includes('PRODUCT_DELETE') || isAdmin) && (
                                                             <button
-                                                                onClick={() => handleDelete(user.id)}
+                                                                onClick={() => handleDelete(category.id)}
                                                                 className="text-red-600 hover:text-red-900"
                                                             >
                                                                 Delete
                                                             </button>
-                                                        </>
-                                                    ) : (
-                                                        <span className="text-gray-500">Actions disabled</span>
-                                                    )}
+                                                        )}
+
+                                                        {(!auth.user.permissions.includes('PRODUCT_EDIT') && !auth.user.permissions.includes('PRODUCT_DELETE') && !isAdmin) && (
+                                                            <span className="text-gray-500">Actions disabled</span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -154,15 +132,15 @@ export default function Category({ auth, users }) {
                                 </table>
 
                                 {/* Empty State */}
-                                {filteredUsers.length === 0 && (
+                                {filteredCategories.length === 0 && (
                                     <div className="text-center py-10">
-                                        <p className="text-gray-500">No users found</p>
+                                        <p className="text-gray-500">No categories found</p>
                                     </div>
                                 )}
                             </div>
 
                             {/* Pagination */}
-                            {users.links && (
+                            {categories.links && (
                                 <div className="mt-6">
                                     {/* Add pagination component here if needed */}
                                 </div>

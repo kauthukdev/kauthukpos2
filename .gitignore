@@ -21,3 +21,10 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# User Uploaded Images (Keep directory, ignore content)
+/storage/app/public/images/*
+/storage/app/public/product_images/*
+!/storage/app/public/images/.gitignore
+!/storage/app/public/product_images/.gitignore
+
