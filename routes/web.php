@@ -72,6 +72,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/products/bulk-upload', [ProductController::class, 'processBulkUpload'])->name('products.process-bulk-upload');
         Route::get('/products/download-template', [ProductController::class, 'downloadTemplate'])->name('products.download-template');
         Route::get('/download-product-template', [ProductController::class, 'downloadTemplate'])->name('download.product-template');
+        Route::get('/products/bulk-upload-result', [ProductController::class, 'downloadBulkUploadResult'])->name('products.bulk-upload-result');
     });
     
     // Other Product Routes
@@ -93,6 +94,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:INVOICE_CREATE')->group(function () {
         Route::get('/sales/create', [SalesController::class, 'create'])->name('sales.create');
         Route::post('/sales', [SalesController::class, 'store'])->name('sales.store');
+        Route::get('/sales/next-number', [SalesController::class, 'getNextInvoiceNumber'])->name('sales.next-number');
     });
 
     Route::get('/sales/{sale}', [SalesController::class, 'show'])->name('sales.show')->middleware('can:INVOICE_VIEW');

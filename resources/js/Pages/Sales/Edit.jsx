@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Head, Link, useForm } from '@inertiajs/react';
 import FullScreenLayout from '../../Layouts/FullScreenLayout';
 import InputError from '../../Components/InputError';
@@ -58,7 +59,7 @@ export default function Edit({ auth, products, sale }) {
                 mode_terms_of_payment: sale.mode_terms_of_payment || '',
                 supplier_reference: sale.supplier_reference || '',
                 other_reference: sale.other_reference || '',
-                items: sale.sale_items && sale.sale_items.length > 0 
+                items: sale.sale_items && sale.sale_items.length > 0
                     ? sale.sale_items.map(item => ({
                         id: item.id,
                         product_id: item.product_id,
@@ -141,18 +142,18 @@ export default function Edit({ auth, products, sale }) {
             return;
         }
 
-        const filtered = products.filter(product => 
+        const filtered = products.filter(product =>
             product.name.toLowerCase().includes(term.toLowerCase())
         );
-        
+
         const newFilteredProducts = [...filteredProductsArray];
         newFilteredProducts[index] = filtered;
         setFilteredProductsArray(newFilteredProducts);
-        
+
         const newShowSuggestions = [...showSuggestionsArray];
         newShowSuggestions[index] = true;
         setShowSuggestionsArray(newShowSuggestions);
-        
+
         const newActiveIndex = [...activeIndexArray];
         newActiveIndex[index] = -1;
         setActiveIndexArray(newActiveIndex);
@@ -170,11 +171,11 @@ export default function Edit({ auth, products, sale }) {
             rate: product.price || 0,
         };
         setData('items', updatedItems);
-        
+
         const newSearchTerms = [...searchTerms];
         newSearchTerms[index] = '';
         setSearchTerms(newSearchTerms);
-        
+
         const newShowSuggestions = [...showSuggestionsArray];
         newShowSuggestions[index] = false;
         setShowSuggestionsArray(newShowSuggestions);
@@ -184,7 +185,7 @@ export default function Edit({ auth, products, sale }) {
     const handleCustomProduct = (index) => {
         const term = searchTerms[index];
         if (!term.trim()) return;
-        
+
         const updatedItems = [...data.items];
         updatedItems[index] = {
             ...updatedItems[index],
@@ -192,11 +193,11 @@ export default function Edit({ auth, products, sale }) {
             description: term,
         };
         setData('items', updatedItems);
-        
+
         const newSearchTerms = [...searchTerms];
         newSearchTerms[index] = '';
         setSearchTerms(newSearchTerms);
-        
+
         const newShowSuggestions = [...showSuggestionsArray];
         newShowSuggestions[index] = false;
         setShowSuggestionsArray(newShowSuggestions);
@@ -206,7 +207,7 @@ export default function Edit({ auth, products, sale }) {
     const handleKeyDown = (index, e) => {
         const filteredProducts = filteredProductsArray[index] || [];
         const activeIndex = activeIndexArray[index] || -1;
-        
+
         // Down arrow
         if (e.keyCode === 40) {
             e.preventDefault();
@@ -241,7 +242,7 @@ export default function Edit({ auth, products, sale }) {
 
     const handleItemChange = (index, field, value) => {
         const updatedItems = [...data.items];
-        
+
         // Special handling for quantity field to ensure only natural numbers
         if (field === 'quantity') {
             // Convert to integer and ensure it's positive
@@ -249,12 +250,12 @@ export default function Edit({ auth, products, sale }) {
             // If it's a valid positive integer, use it, otherwise default to 1
             value = (!isNaN(intValue) && intValue > 0) ? intValue : 1;
         }
-        
+
         updatedItems[index] = {
             ...updatedItems[index],
             [field]: value,
         };
-        
+
         setData('items', updatedItems);
     };
 
@@ -278,20 +279,20 @@ export default function Edit({ auth, products, sale }) {
             const updatedItems = [...data.items];
             updatedItems.splice(index, 1);
             setData('items', updatedItems);
-            
+
             // Also update the search states
             const newSearchTerms = [...searchTerms];
             newSearchTerms.splice(index, 1);
             setSearchTerms(newSearchTerms);
-            
+
             const newFilteredProducts = [...filteredProductsArray];
             newFilteredProducts.splice(index, 1);
             setFilteredProductsArray(newFilteredProducts);
-            
+
             const newShowSuggestions = [...showSuggestionsArray];
             newShowSuggestions.splice(index, 1);
             setShowSuggestionsArray(newShowSuggestions);
-            
+
             const newActiveIndex = [...activeIndexArray];
             newActiveIndex.splice(index, 1);
             setActiveIndexArray(newActiveIndex);
@@ -304,7 +305,7 @@ export default function Edit({ auth, products, sale }) {
             header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Edit Sale</h2>}
         >
             <Head title="Edit Sale" />
-            
+
             {/* Print-specific styles */}
             <style>
                 {`
@@ -509,14 +510,14 @@ export default function Edit({ auth, products, sale }) {
                                                                         value={item.description || searchTerms[index] || ''}
                                                                         onChange={(e) => {
                                                                             const value = e.target.value;
-                                                                            
+
                                                                             // Update search term for this row
                                                                             const newSearchTerms = [...searchTerms];
                                                                             newSearchTerms[index] = value;
                                                                             setSearchTerms(newSearchTerms);
-                                                                            
+
                                                                             filterProducts(index, value);
-                                                                            
+
                                                                             // Clear existing product if user is typing
                                                                             if (item.product_id) {
                                                                                 const updatedItems = [...data.items];
@@ -547,39 +548,74 @@ export default function Edit({ auth, products, sale }) {
                                                                         }}
                                                                         onKeyDown={(e) => handleKeyDown(index, e)}
                                                                     />
-                                                                    
-                                                                    {showSuggestionsArray[index] && filteredProductsArray[index]?.length > 0 && (
-                                                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                                                                            {filteredProductsArray[index].map((product, idx) => (
+
+
+                                                                    {showSuggestionsArray[index] && filteredProductsArray[index]?.length > 0 && (() => {
+                                                                        const ref = searchInputRefs.current[index];
+                                                                        const rect = ref?.getBoundingClientRect?.();
+                                                                        if (!rect) return null;
+                                                                        return createPortal(
+                                                                            <div
+                                                                                className="fixed z-[9999] bg-white border border-gray-300 rounded-md shadow-xl max-h-[500px] overflow-y-auto"
+                                                                                style={{
+                                                                                    top: `${rect.bottom}px`,
+                                                                                    left: `${rect.left}px`,
+                                                                                    width: `${rect.width}px`,
+                                                                                    marginTop: '4px'
+                                                                                }}
+                                                                            >
+                                                                                {filteredProductsArray[index].map((product, idx) => (
+                                                                                    <div
+                                                                                        key={product.id}
+                                                                                        className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${activeIndexArray[index] === idx ? 'bg-gray-100' : ''}`}
+                                                                                        onMouseDown={(e) => {
+                                                                                            e.preventDefault();
+                                                                                            handleProductSelect(index, product);
+                                                                                        }}
+                                                                                        onMouseEnter={() => {
+                                                                                            const newActiveIndex = [...activeIndexArray];
+                                                                                            newActiveIndex[index] = idx;
+                                                                                            setActiveIndexArray(newActiveIndex);
+                                                                                        }}
+                                                                                    >
+                                                                                        <div className="font-medium">{product.name}</div>
+                                                                                        <div className="text-sm text-gray-500">
+                                                                                            Price: ₹{product.price} | GST: {product.gst}%
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>,
+                                                                            document.body
+                                                                        );
+                                                                    })()}
+
+                                                                    {showSuggestionsArray[index] && searchTerms[index] && filteredProductsArray[index]?.length === 0 && (() => {
+                                                                        const ref = searchInputRefs.current[index];
+                                                                        const rect = ref?.getBoundingClientRect?.();
+                                                                        if (!rect) return null;
+                                                                        return createPortal(
+                                                                            <div
+                                                                                className="fixed z-[9999] bg-white border border-gray-300 rounded-md shadow-xl"
+                                                                                style={{
+                                                                                    top: `${rect.bottom}px`,
+                                                                                    left: `${rect.left}px`,
+                                                                                    width: `${rect.width}px`,
+                                                                                    marginTop: '4px'
+                                                                                }}
+                                                                            >
                                                                                 <div
-                                                                                    key={product.id}
-                                                                                    className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${activeIndexArray[index] === idx ? 'bg-gray-100' : ''}`}
-                                                                                    onClick={() => handleProductSelect(index, product)}
-                                                                                    onMouseEnter={() => {
-                                                                                        const newActiveIndex = [...activeIndexArray];
-                                                                                        newActiveIndex[index] = idx;
-                                                                                        setActiveIndexArray(newActiveIndex);
+                                                                                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                                                                    onMouseDown={(e) => {
+                                                                                        e.preventDefault();
+                                                                                        handleCustomProduct(index);
                                                                                     }}
                                                                                 >
-                                                                                    <div className="font-medium">{product.name}</div>
-                                                                                    <div className="text-sm text-gray-500">
-                                                                                        Price: ₹{product.price} | GST: {product.gst}%
-                                                                                    </div>
+                                                                                    Use "{searchTerms[index]}" as custom product
                                                                                 </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                    
-                                                                    {showSuggestionsArray[index] && searchTerms[index] && filteredProductsArray[index]?.length === 0 && (
-                                                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-                                                                            <div 
-                                                                                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                                                                                onClick={() => handleCustomProduct(index)}
-                                                                            >
-                                                                                Use "{searchTerms[index]}" as custom product
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
+                                                                            </div>,
+                                                                            document.body
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                             </td>
                                                             <td className="py-2 px-2 text-left">

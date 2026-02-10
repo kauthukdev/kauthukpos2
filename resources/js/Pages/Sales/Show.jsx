@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 export default function Show({ auth, sale }) {
     const [isPrinting, setIsPrinting] = useState(false);
-    
+
     const handlePrint = () => {
         setIsPrinting(true);
         setTimeout(() => {
@@ -15,20 +15,27 @@ export default function Show({ auth, sale }) {
             }, 500);
         }, 100);
     };
-    
+
     return (
         <AuthenticatedLayout
             user={auth.user}
             header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Sale Details</h2>}
         >
-            <Head title="Sale Details" />
-            
-            {/* Print-specific styles */}
+            <Head title={`${sale.buyer_name}-${format(new Date(sale.invoice_date), 'dd-MM-yyyy')}`} />
+
+            {/* Print-specific styles for A5 size (half of A4) */}
             <style>
                 {`
                     @media print {
+                        @page {
+                            size: A5 portrait;
+                            margin: 5mm;
+                        }
                         body * {
                             visibility: hidden;
+                        }
+                        body {
+                            font-size: 9px !important;
                         }
                         .print-section, .print-section * {
                             visibility: visible;
@@ -38,7 +45,22 @@ export default function Show({ auth, sale }) {
                             left: 0;
                             top: 0;
                             width: 100%;
-                            padding: 20px;
+                            padding: 3mm;
+                            font-size: 9px !important;
+                        }
+                        .print-section h2 {
+                            font-size: 11px !important;
+                            margin-bottom: 2px !important;
+                        }
+                        .print-section .company-name {
+                            font-size: 14px !important;
+                        }
+                        .print-section .invoice-title {
+                            font-size: 12px !important;
+                        }
+                        .print-section p, .print-section span, .print-section td {
+                            font-size: 8px !important;
+                            line-height: 1.2 !important;
                         }
                         .no-print {
                             display: none !important;
@@ -51,8 +73,42 @@ export default function Show({ auth, sale }) {
                             border-collapse: collapse;
                         }
                         th, td {
-                            border: 1px solid #ddd;
-                            padding: 8px;
+                            border: 1px solid #ccc;
+                            padding: 2px 3px !important;
+                            font-size: 7px !important;
+                        }
+                        th {
+                            font-size: 7px !important;
+                            padding: 3px !important;
+                            background-color: #f0f0f0 !important;
+                        }
+                        .print-section .header-section {
+                            padding-bottom: 3px !important;
+                            margin-bottom: 3px !important;
+                        }
+                        .print-section .logo-container {
+                            width: 35px !important;
+                            height: 35px !important;
+                        }
+                        .print-section .details-grid {
+                            gap: 3px !important;
+                            margin-bottom: 3px !important;
+                        }
+                        .print-section .details-box {
+                            padding: 3px !important;
+                        }
+                        .print-section .items-section {
+                            margin-bottom: 3px !important;
+                        }
+                        .print-section .totals-section {
+                            padding-top: 3px !important;
+                        }
+                        .print-section .signature-section {
+                            margin-top: 5px !important;
+                            padding-top: 3px !important;
+                        }
+                        .print-section .signature-space {
+                            margin-bottom: 15px !important;
                         }
                     }
                 `}
@@ -72,7 +128,7 @@ export default function Show({ auth, sale }) {
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                                             <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
                                         </svg>
-                                        Print Invoice
+                                        Print Invoice (A5)
                                     </button>
                                     <Link
                                         href={route('sales.index')}
@@ -83,111 +139,83 @@ export default function Show({ auth, sale }) {
                                 </div>
                             </div>
 
-                            {/* Print Section */}
+                            {/* Print Section - Compact A5 Layout */}
                             <div className={`print-section ${isPrinting ? 'bg-white' : ''}`}>
-                                {/* Header with Company Info */}
-                                <div className="flex items-center mb-6 border-b pb-4">
-                                    <div className="w-20 h-20 mr-4">
+                                {/* Header with Company Info - Compact */}
+                                <div className="flex items-center mb-3 border-b pb-2 header-section">
+                                    <div className="w-12 h-12 mr-2 logo-container">
                                         <img src="/images/logo.png" alt="Kauthuk Logo" className="w-full h-full object-contain" />
                                     </div>
-                                    <div>
-                                        <h2 className="text-xl font-bold">KAUTHUK</h2>
-                                        <p className="text-sm">19/31601, Vymeethi, Thripunithura - 682301</p>
-                                        <p className="text-sm">Phone: 8075727191, 9746290803</p>
-                                        <p className="text-sm">E-Mail: sales@kauthuk.com</p>
-                                        <p className="text-sm">GST:32AROPV6237K1Z4</p>
+                                    <div className="flex-1">
+                                        <h2 className="text-base font-bold company-name">KAUTHUK</h2>
+                                        <p className="text-xs">19/31601, Vymeethi, Thripunithura - 682301</p>
+                                        <p className="text-xs">Ph: 8075727191, 9746290803 | sales@kauthuk.com</p>
+                                        <p className="text-xs">GST: 32AROPV6237K1Z4</p>
                                     </div>
-                                    <div className="ml-auto text-right">
-                                        <h2 className="text-xl font-bold">TAX INVOICE</h2>
-                                        <p className="text-sm"><span className="font-medium">Invoice No:</span> {sale.invoice_no}</p>
-                                        <p className="text-sm"><span className="font-medium">Date:</span> {format(new Date(sale.invoice_date), 'dd/MM/yyyy')}</p>
-                                    </div>
-                                </div>
-
-                                {/* Invoice Details and Buyer Info */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                    <div className="border p-4 rounded-lg">
-                                        <h2 className="text-lg font-semibold mb-2">Invoice Details</h2>
-                                        <table className="w-full text-sm">
-                                            <tbody>
-                                                <tr>
-                                                    <td className="py-1 font-medium">Delivery Note:</td>
-                                                    <td className="py-1">{sale.delivery_note || 'N/A'}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="py-1 font-medium">Mode/Terms of Payment:</td>
-                                                    <td className="py-1">{sale.mode_terms_of_payment || 'N/A'}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="py-1 font-medium">Supplier Reference:</td>
-                                                    <td className="py-1">{sale.supplier_reference || 'N/A'}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="py-1 font-medium">Other Reference:</td>
-                                                    <td className="py-1">{sale.other_reference || 'N/A'}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div className="border p-4 rounded-lg">
-                                        <h2 className="text-lg font-semibold mb-2">Buyer Details</h2>
-                                        <table className="w-full text-sm">
-                                            <tbody>
-                                                <tr>
-                                                    <td className="py-1 font-medium">Name:</td>
-                                                    <td className="py-1">{sale.buyer_name}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="py-1 font-medium">Address:</td>
-                                                    <td className="py-1">{sale.buyer_address || 'N/A'}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="py-1 font-medium">GSTIN:</td>
-                                                    <td className="py-1">{sale.buyer_gstin || 'N/A'}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                    <div className="text-right">
+                                        <h2 className="text-sm font-bold invoice-title">TAX INVOICE</h2>
+                                        <p className="text-xs"><span className="font-medium">No:</span> {sale.invoice_no}</p>
+                                        <p className="text-xs"><span className="font-medium">Date:</span> {format(new Date(sale.invoice_date), 'dd/MM/yyyy')}</p>
                                     </div>
                                 </div>
 
-                                {/* Items Table */}
-                                <div className="mb-6">
-                                    <h2 className="text-lg font-semibold mb-2">Items</h2>
+                                {/* Invoice Details and Buyer Info - Compact Side by Side */}
+                                <div className="grid grid-cols-2 gap-2 mb-2 details-grid">
+                                    <div className="border p-2 rounded details-box">
+                                        <h2 className="text-xs font-semibold mb-1">Buyer Details</h2>
+                                        <div className="text-xs space-y-0">
+                                            <p><span className="font-medium">Name:</span> {sale.buyer_name}</p>
+                                            <p><span className="font-medium">Address:</span> {sale.buyer_address || 'N/A'}</p>
+                                            <p><span className="font-medium">GSTIN:</span> {sale.buyer_gstin || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="border p-2 rounded details-box">
+                                        <h2 className="text-xs font-semibold mb-1">Invoice Details</h2>
+                                        <div className="text-xs space-y-0">
+                                            <p><span className="font-medium">Delivery:</span> {sale.delivery_note || 'N/A'}</p>
+                                            <p><span className="font-medium">Payment:</span> {sale.mode_terms_of_payment || 'N/A'}</p>
+                                            <p><span className="font-medium">Ref:</span> {sale.supplier_reference || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Items Table - Compact */}
+                                <div className="mb-2 items-section">
                                     <div className="overflow-x-auto">
-                                        <table className="min-w-full bg-white border">
+                                        <table className="w-full bg-white border text-xs">
                                             <thead>
-                                                <tr className="bg-gray-100 text-gray-700 uppercase text-sm leading-normal">
-                                                    <th className="py-3 px-4 text-left">SI</th>
-                                                    <th className="py-3 px-4 text-left">Description</th>
-                                                    <th className="py-3 px-4 text-left">HSN</th>
-                                                    <th className="py-3 px-4 text-center">GST %</th>
-                                                    <th className="py-3 px-4 text-right">Rate (INR)</th>
-                                                    <th className="py-3 px-4 text-center">Quantity</th>
-                                                    <th className="py-3 px-4 text-center">Discount (%)</th>
-                                                    <th className="py-3 px-4 text-right">CGST (INR)</th>
-                                                    <th className="py-3 px-4 text-right">SGST (INR)</th>
-                                                    <th className="py-3 px-4 text-right">Amount (INR)</th>
+                                                <tr className="bg-gray-100 text-gray-700 text-xs">
+                                                    <th className="py-1 px-1 text-left">#</th>
+                                                    <th className="py-1 px-1 text-left">Description</th>
+                                                    <th className="py-1 px-1 text-left">HSN</th>
+                                                    <th className="py-1 px-1 text-center">GST%</th>
+                                                    <th className="py-1 px-1 text-right">Rate</th>
+                                                    <th className="py-1 px-1 text-center">Qty</th>
+                                                    <th className="py-1 px-1 text-center">Disc%</th>
+                                                    <th className="py-1 px-1 text-right">CGST</th>
+                                                    <th className="py-1 px-1 text-right">SGST</th>
+                                                    <th className="py-1 px-1 text-right">Amount</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="text-gray-600 text-sm">
+                                            <tbody className="text-gray-600 text-xs">
                                                 {(sale.sale_items || sale.saleItems) && (sale.sale_items?.length > 0 || sale.saleItems?.length > 0) ? (
                                                     (sale.sale_items || sale.saleItems).map((item, index) => (
-                                                        <tr key={item.id} className="border-b hover:bg-gray-50">
-                                                            <td className="py-3 px-4 text-left">{index + 1}</td>
-                                                            <td className="py-3 px-4 text-left">{item.description}</td>
-                                                            <td className="py-3 px-4 text-left">{item.hsn || 'N/A'}</td>
-                                                            <td className="py-3 px-4 text-center">{item.gst_percentage}%</td>
-                                                            <td className="py-3 px-4 text-right">₹{parseFloat(item.rate).toFixed(2)}</td>
-                                                            <td className="py-3 px-4 text-center">{item.quantity}</td>
-                                                            <td className="py-3 px-4 text-center">{item.discount_percentage}%</td>
-                                                            <td className="py-3 px-4 text-right">₹{parseFloat(item.cgst).toFixed(2)}</td>
-                                                            <td className="py-3 px-4 text-right">₹{parseFloat(item.sgst).toFixed(2)}</td>
-                                                            <td className="py-3 px-4 text-right">₹{parseFloat(item.amount).toFixed(2)}</td>
+                                                        <tr key={item.id} className="border-b">
+                                                            <td className="py-1 px-1 text-left">{index + 1}</td>
+                                                            <td className="py-1 px-1 text-left">{item.description}</td>
+                                                            <td className="py-1 px-1 text-left">{item.hsn || '-'}</td>
+                                                            <td className="py-1 px-1 text-center">{item.gst_percentage}%</td>
+                                                            <td className="py-1 px-1 text-right">₹{parseFloat(item.rate).toFixed(2)}</td>
+                                                            <td className="py-1 px-1 text-center">{item.quantity}</td>
+                                                            <td className="py-1 px-1 text-center">{item.discount_percentage}%</td>
+                                                            <td className="py-1 px-1 text-right">₹{parseFloat(item.cgst).toFixed(2)}</td>
+                                                            <td className="py-1 px-1 text-right">₹{parseFloat(item.sgst).toFixed(2)}</td>
+                                                            <td className="py-1 px-1 text-right">₹{parseFloat(item.amount).toFixed(2)}</td>
                                                         </tr>
                                                     ))
                                                 ) : (
                                                     <tr>
-                                                        <td colSpan="10" className="py-3 px-4 text-center">No items found</td>
+                                                        <td colSpan="10" className="py-1 px-1 text-center">No items found</td>
                                                     </tr>
                                                 )}
                                             </tbody>
@@ -195,45 +223,47 @@ export default function Show({ auth, sale }) {
                                     </div>
                                 </div>
 
-                                {/* Totals Section */}
-                                <div className="border-t pt-4">
-                                    <div className="flex justify-end">
-                                        <div className="w-full md:w-1/3">
-                                            <div className="flex justify-between py-2 border-b">
+                                {/* Totals Section - Compact */}
+                                <div className="border-t pt-2 totals-section">
+                                    <div className="flex justify-between">
+                                        <div className="w-1/2 pr-2">
+                                            <div className="text-xs italic">
+                                                <span className="font-medium">Amount Chargeable (in words):</span>
+                                                <p>{sale.amount_chargeable_in_words}</p>
+                                            </div>
+                                        </div>
+                                        <div className="w-1/2 pl-2">
+                                            <div className="flex justify-between py-0.5 text-xs border-b">
                                                 <span className="font-medium">Taxable Value:</span>
                                                 <span>₹{parseFloat(sale.taxable_value).toFixed(2)}</span>
                                             </div>
-                                            <div className="flex justify-between py-2 border-b">
+                                            <div className="flex justify-between py-0.5 text-xs border-b">
                                                 <span className="font-medium">Total Tax:</span>
                                                 <span>₹{parseFloat(sale.total_tax).toFixed(2)}</span>
                                             </div>
-                                            <div className="flex justify-between py-2 border-b">
+                                            <div className="flex justify-between py-0.5 text-xs border-b">
                                                 <span className="font-medium">Round Off:</span>
                                                 <span>₹0.00</span>
                                             </div>
-                                            <div className="flex justify-between py-2 font-bold">
+                                            <div className="flex justify-between py-1 text-sm font-bold">
                                                 <span>GRAND TOTAL:</span>
                                                 <span>₹{parseFloat(sale.grand_total).toFixed(2)}</span>
-                                            </div>
-                                            <div className="mt-2 text-sm italic">
-                                                <span className="font-medium">Amount Chargeable (in words):</span>
-                                                <p>{sale.amount_chargeable_in_words}</p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Declaration and Signature */}
-                                <div className="mt-8 border-t pt-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Declaration and Signature - Compact */}
+                                <div className="mt-3 border-t pt-2 signature-section">
+                                    <div className="grid grid-cols-2 gap-2">
                                         <div>
-                                            <p className="text-sm">
-                                                We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
+                                            <p className="text-xs">
+                                                We declare that this invoice shows the actual price of goods and all particulars are true and correct.
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-medium mb-10">For KAUTHUK</p>
-                                            <p className="font-medium">Authorized Signatory</p>
+                                            <p className="text-xs font-medium signature-space">For KAUTHUK</p>
+                                            <p className="text-xs font-medium">Authorized Signatory</p>
                                         </div>
                                     </div>
                                 </div>

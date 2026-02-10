@@ -8,6 +8,8 @@ export default forwardRef(function TextInput(
 
     useImperativeHandle(ref, () => ({
         focus: () => localRef.current?.focus(),
+        getBoundingClientRect: () => localRef.current?.getBoundingClientRect(),
+        get current() { return localRef.current; },
     }));
 
     useEffect(() => {

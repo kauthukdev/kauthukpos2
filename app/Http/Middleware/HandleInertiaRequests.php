@@ -45,6 +45,7 @@ class HandleInertiaRequests extends Middleware
                 'message' => session('message'),
                 'error' => session('error'),
                 'success' => session('success'),
+                'download_url' => session('download_url'),
             ],
         ];
     }

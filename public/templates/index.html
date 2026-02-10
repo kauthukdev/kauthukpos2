@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,11 +13,13 @@
             margin: 0 auto;
             padding: 20px;
         }
+
         h1 {
             color: #333;
             border-bottom: 1px solid #eee;
             padding-bottom: 10px;
         }
+
         .download-btn {
             display: inline-block;
             background-color: #4CAF50;
@@ -26,15 +29,19 @@
             border-radius: 4px;
             margin-top: 20px;
         }
+
         .download-btn:hover {
             background-color: #45a049;
         }
+
         ul {
             margin-top: 20px;
         }
+
         li {
             margin-bottom: 10px;
         }
+
         .note {
             background-color: #f8f9fa;
             border-left: 4px solid #4CAF50;
@@ -43,18 +50,19 @@
         }
     </style>
 </head>
+
 <body>
     <h1>Product Import Template</h1>
     <p>Use this template to bulk upload products to the system. Please follow the instructions below:</p>
-    
+
     <ul>
         <li>Download the template Excel file using the button below.</li>
         <li>Fill in the product details in the Excel file. Do not modify the header row.</li>
         <li>Required fields: title, category, cost_price, selling_price</li>
-        <li>Category should be the category ID number.</li>
+        <li>Category should be the exact category name (e.g., "Electronics", "Home Appliances").</li>
         <li>Save the file and upload it using the bulk upload form in the application.</li>
     </ul>
-    
+
     <div class="note">
         <h3>About Product Codes</h3>
         <p>Product codes are automatically generated based on the category name using the following logic:</p>
@@ -65,7 +73,8 @@
         </ol>
         <p>For example, if the category is "Electronics", the product code might be "LCT-123".</p>
     </div>
-    
+
     <a href="product_import_template.xlsx" class="download-btn" download>Download Template</a>
 </body>
-</html> 
+
+</html>

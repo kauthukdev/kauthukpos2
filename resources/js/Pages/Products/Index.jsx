@@ -7,6 +7,55 @@ export default function Index({ auth, products, filters }) {
     const roleID = usePage().props.auth.user.role_id;
     const isAdmin = roleID === 1; // Only allow actions for users with roleID 1
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
+    const { flash, errors } = usePage().props;
+
+    // Handle flash messages and automatic downloads
+    useEffect(() => {
+        // Check for download URL (from bulk upload) - handle this first
+        if (flash?.download_url) {
+            const successMsg = flash?.success || 'Upload completed.';
+            const hasErrors = errors?.error;
+
+            Swal.fire({
+                icon: hasErrors ? 'warning' : 'success',
+                title: hasErrors ? 'Import Completed with Errors' : 'Import Successful!',
+                html: `
+                    <p>${hasErrors ? errors.error : successMsg}</p>
+                    <p class="mt-3"><strong>Click the button below to download the result file:</strong></p>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Download Result File',
+                cancelButtonText: 'Close',
+                confirmButtonColor: '#10B981',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Open download URL
+                    window.open(flash.download_url, '_blank');
+                }
+            });
+            return; // Don't show other alerts if we showed this one
+        }
+
+        // Check for success message (without download)
+        if (flash?.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: flash.success,
+                confirmButtonText: 'OK',
+            });
+        }
+
+        // Check for error messages (without download)
+        if (errors?.error && !flash?.download_url) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: errors.error,
+                confirmButtonText: 'OK',
+            });
+        }
+    }, [flash, errors]);
 
     // Debug pagination data
     console.log('Pagination data:', {

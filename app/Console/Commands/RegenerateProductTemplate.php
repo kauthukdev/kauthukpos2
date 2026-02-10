@@ -25,6 +25,12 @@ class RegenerateProductTemplate extends Command
      */
     public function handle()
     {
-        //
+        $filePath = public_path('templates/product_import_template.xlsx');
+        if (file_exists($filePath)) {
+            unlink($filePath);
+            $this->info('Product template removed. It will be regenerated on next download request.');
+        } else {
+            $this->info('No existing template found.');
+        }
     }
 }

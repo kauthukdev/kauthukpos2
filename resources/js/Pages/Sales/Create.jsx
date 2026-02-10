@@ -1,12 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Head, Link, useForm } from '@inertiajs/react';
 import FullScreenLayout from '../../Layouts/FullScreenLayout';
 import InputError from '../../Components/InputError';
 import InputLabel from '../../Components/InputLabel';
 import TextInput from '../../Components/TextInput';
 import { format } from 'date-fns';
+import axios from 'axios';
 
 export default function Create({ auth, products }) {
+    // New state for invoice configuration
+    const [showConfigModal, setShowConfigModal] = useState(true);
+    const [invoiceConfig, setInvoiceConfig] = useState({
+        type: '', // 'B2B' or 'B2C'
+        region: '', // 'Local' or 'Interstate'
+    });
+    const [invoicePrefix, setInvoicePrefix] = useState('');
+    const [invoiceSerial, setInvoiceSerial] = useState('');
+
     const { data, setData, post, processing, errors, reset } = useForm({
         invoice_no: '',
         invoice_date: format(new Date(), 'yyyy-MM-dd'),
@@ -37,6 +48,7 @@ export default function Create({ auth, products }) {
         sgst: 0,
         grandTotal: 0,
     });
+
 
     // State for product search - now using arrays for each row
     const [searchTerms, setSearchTerms] = useState([]);
@@ -87,6 +99,87 @@ export default function Create({ auth, products }) {
             grandTotal: grandTotal,
         });
     }, [data.items]);
+
+    // Update invoice_no whenever prefix or serial changes
+    useEffect(() => {
+        if (invoicePrefix && invoiceSerial) {
+            setData('invoice_no', `${invoicePrefix}${invoiceSerial}`);
+        }
+    }, [invoicePrefix, invoiceSerial]);
+
+    // Financial Year Helper
+    const getFinancialYear = (separator = '-') => {
+        const today = new Date();
+        const month = today.getMonth() + 1; // 1-12
+        const year = today.getFullYear();
+
+        let startYear, endYear;
+
+        if (month >= 4) { // April onwards
+            startYear = year;
+            endYear = year + 1;
+        } else { // Jan - March
+            startYear = year - 1;
+            endYear = year;
+        }
+
+        const shortStartYear = startYear.toString();
+        const shortEndYear = endYear.toString().slice(-2);
+
+        return `${shortStartYear}${separator}${shortEndYear}`;
+    };
+
+    // Generate prefix and fetch next number
+    const generateInvoiceDetails = async (type, region) => {
+        let prefix = '';
+        let separator = '-'; // Default separator
+
+        // Determine prefix format based on rules
+        if (type === 'B2B' && region === 'Local') {
+            // KAR-LB-2026-27/01 (separator for year is -, then slash)
+            prefix = `KAR-LB-${getFinancialYear('-')}/`;
+        } else if (type === 'B2B' && region === 'Interstate') {
+            // KAR-IB-2026-27/1
+            prefix = `KAR-IB-${getFinancialYear('-')}/`;
+        } else if (type === 'B2C' && region === 'Local') {
+            // KAR-LC-2026/27/1 (separator for year is /)
+            prefix = `KAR-LC-${getFinancialYear('/')}/`;
+        } else if (type === 'B2C' && region === 'Interstate') {
+            // KAR-IC-2026/27/1
+            prefix = `KAR-IC-${getFinancialYear('/')}/`;
+        }
+
+        setInvoicePrefix(prefix);
+
+        try {
+            const response = await axios.get(route('sales.next-number'), {
+                params: { prefix }
+            });
+            const nextNum = response.data.next_number;
+
+            // Format serial number (padding for B2B Local as per example)
+            let formattedSerial = nextNum.toString();
+            if (type === 'B2B' && region === 'Local' && nextNum < 10) {
+                formattedSerial = `0${nextNum}`;
+            }
+
+            setInvoiceSerial(formattedSerial);
+        } catch (error) {
+            console.error('Error fetching next invoice number:', error);
+            setInvoiceSerial('1'); // Fallback
+        }
+    };
+
+    const handleConfigSelect = (key, value) => {
+        const newConfig = { ...invoiceConfig, [key]: value };
+        setInvoiceConfig(newConfig);
+
+        // If both selected, close modal and generate invoice
+        if (newConfig.type && (key === 'region' || newConfig.region)) {
+            setShowConfigModal(false);
+            generateInvoiceDetails(newConfig.type, key === 'region' ? value : newConfig.region);
+        }
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -284,6 +377,70 @@ export default function Create({ auth, products }) {
         >
             <Head title="Create Sale" />
 
+            {/* Configuration Modal */}
+            {showConfigModal && (
+                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4" id="modal-title">
+                                    Invoice Configuration
+                                </h3>
+
+                                {!invoiceConfig.type ? (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-gray-500">Please select the invoice type:</p>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <button
+                                                onClick={() => handleConfigSelect('type', 'B2B')}
+                                                className="w-full py-3 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                            >
+                                                B2B (Business to Business)
+                                            </button>
+                                            <button
+                                                onClick={() => handleConfigSelect('type', 'B2C')}
+                                                className="w-full py-3 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                            >
+                                                B2C (Business to Consumer)
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-gray-500">
+                                            Selected Type: <span className="font-bold">{invoiceConfig.type}</span>
+                                            <button
+                                                onClick={() => setInvoiceConfig({ ...invoiceConfig, type: '' })}
+                                                className="ml-2 text-blue-600 hover:text-blue-800 text-xs underline"
+                                            >
+                                                Change
+                                            </button>
+                                        </p>
+                                        <p className="text-sm text-gray-500">Please select the region:</p>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <button
+                                                onClick={() => handleConfigSelect('region', 'Local')}
+                                                className="w-full py-3 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                            >
+                                                Local (Within State)
+                                            </button>
+                                            <button
+                                                onClick={() => handleConfigSelect('region', 'Interstate')}
+                                                className="w-full py-3 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                                            >
+                                                Interstate (Outside State)
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Print-specific styles */}
             <style>
                 {`
@@ -335,14 +492,22 @@ export default function Create({ auth, products }) {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <InputLabel htmlFor="invoice_no" value="Invoice No" />
-                                                <TextInput
-                                                    id="invoice_no"
-                                                    type="text"
-                                                    className="mt-1 block w-full"
-                                                    value={data.invoice_no}
-                                                    onChange={(e) => setData('invoice_no', e.target.value)}
-                                                    required
-                                                />
+                                                <div className="mt-1 flex rounded-md shadow-sm">
+                                                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                                                        {invoicePrefix || 'PREFIX-'}
+                                                    </span>
+                                                    <input
+                                                        type="text"
+                                                        id="invoice_no_serial"
+                                                        className="focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-none rounded-r-md sm:text-sm border-gray-300"
+                                                        value={invoiceSerial}
+                                                        onChange={(e) => setInvoiceSerial(e.target.value)}
+                                                        placeholder="Serial No"
+                                                        required
+                                                    />
+                                                </div>
+                                                {/* Hidden input to ensure invoice_no is submitted */}
+                                                <input type="hidden" name="invoice_no" value={data.invoice_no} />
                                                 <InputError message={errors.invoice_no} className="mt-2" />
                                             </div>
                                             <div>
@@ -527,44 +692,73 @@ export default function Create({ auth, products }) {
                                                                         onKeyDown={(e) => handleKeyDown(index, e)}
                                                                     />
 
-                                                                    {showSuggestionsArray[index] && filteredProductsArray[index]?.length > 0 && (
-                                                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                                                                            {filteredProductsArray[index].map((product, idx) => (
-                                                                                <div
-                                                                                    key={product.id}
-                                                                                    className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${activeIndexArray[index] === idx ? 'bg-gray-100' : ''}`}
-                                                                                    onMouseDown={(e) => {
-                                                                                        e.preventDefault();
-                                                                                        handleProductSelect(index, product);
-                                                                                    }}
-                                                                                    onMouseEnter={() => {
-                                                                                        const newActiveIndex = [...activeIndexArray];
-                                                                                        newActiveIndex[index] = idx;
-                                                                                        setActiveIndexArray(newActiveIndex);
-                                                                                    }}
-                                                                                >
-                                                                                    <div className="font-medium">{product.name}</div>
-                                                                                    <div className="text-sm text-gray-500">
-                                                                                        Price: ₹{product.price} | GST: {product.gst}%
-                                                                                    </div>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
 
-                                                                    {showSuggestionsArray[index] && searchTerms[index] && filteredProductsArray[index]?.length === 0 && (
-                                                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                                                                    {showSuggestionsArray[index] && filteredProductsArray[index]?.length > 0 && (() => {
+                                                                        const ref = searchInputRefs.current[index];
+                                                                        const rect = ref?.getBoundingClientRect?.();
+                                                                        if (!rect) return null;
+                                                                        return createPortal(
                                                                             <div
-                                                                                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                                                                                onMouseDown={(e) => {
-                                                                                    e.preventDefault();
-                                                                                    handleCustomProduct(index);
+                                                                                className="fixed z-[9999] bg-white border border-gray-300 rounded-md shadow-xl max-h-[500px] overflow-y-auto"
+                                                                                style={{
+                                                                                    top: `${rect.bottom}px`,
+                                                                                    left: `${rect.left}px`,
+                                                                                    width: `${rect.width}px`,
+                                                                                    marginTop: '4px'
                                                                                 }}
                                                                             >
-                                                                                Use "{searchTerms[index]}" as custom product
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
+                                                                                {filteredProductsArray[index].map((product, idx) => (
+                                                                                    <div
+                                                                                        key={product.id}
+                                                                                        className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${activeIndexArray[index] === idx ? 'bg-gray-100' : ''}`}
+                                                                                        onMouseDown={(e) => {
+                                                                                            e.preventDefault();
+                                                                                            handleProductSelect(index, product);
+                                                                                        }}
+                                                                                        onMouseEnter={() => {
+                                                                                            const newActiveIndex = [...activeIndexArray];
+                                                                                            newActiveIndex[index] = idx;
+                                                                                            setActiveIndexArray(newActiveIndex);
+                                                                                        }}
+                                                                                    >
+                                                                                        <div className="font-medium">{product.name}</div>
+                                                                                        <div className="text-sm text-gray-500">
+                                                                                            Price: ₹{product.price} | GST: {product.gst}%
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>,
+                                                                            document.body
+                                                                        );
+                                                                    })()}
+
+                                                                    {showSuggestionsArray[index] && searchTerms[index] && filteredProductsArray[index]?.length === 0 && (() => {
+                                                                        const ref = searchInputRefs.current[index];
+                                                                        const rect = ref?.getBoundingClientRect?.();
+                                                                        if (!rect) return null;
+                                                                        return createPortal(
+                                                                            <div
+                                                                                className="fixed z-[9999] bg-white border border-gray-300 rounded-md shadow-xl"
+                                                                                style={{
+                                                                                    top: `${rect.bottom}px`,
+                                                                                    left: `${rect.left}px`,
+                                                                                    width: `${rect.width}px`,
+                                                                                    marginTop: '4px'
+                                                                                }}
+                                                                            >
+                                                                                <div
+                                                                                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                                                                    onMouseDown={(e) => {
+                                                                                        e.preventDefault();
+                                                                                        handleCustomProduct(index);
+                                                                                    }}
+                                                                                >
+                                                                                    Use "{searchTerms[index]}" as custom product
+                                                                                </div>
+                                                                            </div>,
+                                                                            document.body
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                             </td>
                                                             <td className="py-2 px-2 text-left">
