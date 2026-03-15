@@ -1,1 +1,0 @@
-import{j as o}from"./app-CABxPOhi.js";function e(a){const t=a.className&&a.className.includes("h-9"),i={maxWidth:t?"120px":"180px",objectFit:"contain",height:"auto",margin:t?"0 auto":void 0,padding:t?"2px 0":void 0,...a.style};return o.jsx("img",{src:"/images/logo.png",alt:"Kauthuk Logo",style:i,...a,className:`${a.className||""}`})}export{e as A};
