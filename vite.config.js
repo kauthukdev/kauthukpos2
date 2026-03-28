@@ -6,7 +6,7 @@ export default defineConfig({
     base: '/kauthukpos2/',
     plugins: [
         laravel({
-            input: 'resources/js/app.jsx',
+            input: ['resources/js/app.jsx', 'resources/js/catalogue/app.jsx'],
             refresh: true,
         }),
         react(),

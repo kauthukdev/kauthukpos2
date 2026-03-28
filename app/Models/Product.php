@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
@@ -33,6 +32,12 @@ class Product extends Model
     {
         return $this->belongsTo(Category::class, 'category');
     }
+
+    public function galleryImages()
+    {
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function hasCategory($category)
     {
         return $this->category()->where('slug', $category)->exists();

@@ -31,6 +31,9 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
+            'app' => [
+                'baseUrl' => $request->getBaseUrl(),
+            ],
             'auth' => [
                 'user' => $request->user() ? function () use ($request) {
                     $user = $request->user()->load('roles.permissions');

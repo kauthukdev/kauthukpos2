@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { toPublicPath } from '@/utils/assetPath';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
@@ -299,7 +300,7 @@ export default function Index({ auth, products, filters }) {
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     {product.image && (
                                                         <img
-                                                            src={`/storage/${product.image}`}
+                                                            src={toPublicPath(`/storage/${product.image}`)}
                                                             alt={product.title}
                                                             className="w-16 h-16 object-cover"
                                                         />

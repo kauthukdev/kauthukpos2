@@ -4,13 +4,84 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\ProductImage;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Imports\ProductsImport;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 
 class ProductController extends Controller
 { 
+    private function storeProductImage(UploadedFile $file): string
+    {
+        $fileName = time() . '_' . str_replace(' ', '_', $file->getClientOriginalName());
+        $relativePath = $file->storeAs('product_images', $fileName, 'public');
+        $this->syncPublicImage($relativePath);
+
+        return $relativePath;
+    }
+
+    private function syncPublicImage(?string $relativePath): void
+    {
+        if (!$relativePath) {
+            return;
+        }
+
+        $source = storage_path('app/public/' . $relativePath);
+        $destination = public_path('storage/' . $relativePath);
+
+        if (!file_exists($source)) {
+            return;
+        }
+
+        File::ensureDirectoryExists(dirname($destination));
+        File::copy($source, $destination);
+    }
+
+    private function deletePublicImage(?string $relativePath): void
+    {
+        if (!$relativePath) {
+            return;
+        }
+
+        $publicPath = public_path('storage/' . $relativePath);
+
+        if (file_exists($publicPath)) {
+            @unlink($publicPath);
+        }
+    }
+
+    private function deleteStoredImage(?string $relativePath): void
+    {
+        if (!$relativePath) {
+            return;
+        }
+
+        if (Storage::disk('public')->exists($relativePath)) {
+            Storage::disk('public')->delete($relativePath);
+        }
+
+        $this->deletePublicImage($relativePath);
+    }
+
+    private function createGalleryImages(Product $product, array $files, int $startingSortOrder = 0): void
+    {
+        foreach (array_values($files) as $index => $file) {
+            if (!$file instanceof UploadedFile) {
+                continue;
+            }
+
+            $product->galleryImages()->create([
+                'image_path' => $this->storeProductImage($file),
+                'sort_order' => $startingSortOrder + $index,
+            ]);
+        }
+    }
+
     public function index(Request $request)
     {
         $query = Product::with('category:id,name');
@@ -103,7 +174,9 @@ class ProductController extends Controller
             'hsncode' => 'nullable|string|max:255',
             'gst' => 'nullable|numeric',
             'stock_count' => 'required|integer',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'additional_images' => 'nullable|array',
+            'additional_images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         if ($validator->fails()) {
@@ -111,49 +184,54 @@ class ProductController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            try {
-                $file = $request->file('image');
-                $fileName = time() . '_' . $file->getClientOriginalName();
-                // Use storage driver to store the file
-                $path = $file->storeAs('product_images', $fileName, 'public');
-                $imagePath = $path; // This will return 'product_images/filename.ext' relative to storage/app/public
-                
-                \Log::info('Image stored successfully at: ' . $imagePath);
-                
-                // Verify file existence immediately
-                if (file_exists(storage_path('app/public/' . $imagePath))) {
-                    \Log::info('Verified file exists on disk: ' . storage_path('app/public/' . $imagePath));
-                } else {
-                    \Log::error('File does NOT exist on disk after storeAs: ' . storage_path('app/public/' . $imagePath));
-                }
-                
-            } catch (\Exception $e) {
-                \Log::error('Failed to upload image in store: ' . $e->getMessage());
-                \Log::error($e->getTraceAsString());
-            }
-        }
-
         try {
-            $product = Product::create([
-                'title' => $request->title,
-                'product_code' => $request->product_code,
-                'category' => $request->category,
-                'selling_price' => $request->selling_price,
-                'cost_price' => $request->cost_price,
-                'stock_status' => $request->stock_status,
-                'status' => $request->status ?? 'active', // Ensure status has a default
-                'image' => $imagePath,
-                'hsncode' => $request->hsncode,
-                'gst' => $request->gst,
-                'stock_count' => $request->stock_count
-            ]);
+            $createdImagePaths = [];
+
+            $product = DB::transaction(function () use ($request, &$createdImagePaths) {
+                $imagePath = null;
+
+                if ($request->hasFile('image')) {
+                    $imagePath = $this->storeProductImage($request->file('image'));
+                    $createdImagePaths[] = $imagePath;
+                }
+
+                $product = Product::create([
+                    'title' => $request->title,
+                    'product_code' => $request->product_code,
+                    'category' => $request->category,
+                    'selling_price' => $request->selling_price,
+                    'cost_price' => $request->cost_price,
+                    'stock_status' => $request->stock_status,
+                    'status' => $request->status ?? 'active',
+                    'image' => $imagePath,
+                    'hsncode' => $request->hsncode,
+                    'gst' => $request->gst,
+                    'stock_count' => $request->stock_count
+                ]);
+
+                $galleryFiles = $request->file('additional_images', []);
+                foreach ($galleryFiles as $galleryFile) {
+                    $storedPath = $this->storeProductImage($galleryFile);
+                    $createdImagePaths[] = $storedPath;
+                    $product->galleryImages()->create([
+                        'image_path' => $storedPath,
+                        'sort_order' => $product->galleryImages()->count(),
+                    ]);
+                }
+
+                return $product;
+            });
             
             \Log::info('Product created successfully with ID: ' . $product->id);
             return redirect()->route('products.index')->with('success', 'Product created successfully.');
             
         } catch (\Exception $e) {
+            if (!empty($createdImagePaths)) {
+                foreach ($createdImagePaths as $path) {
+                    $this->deleteStoredImage($path);
+                }
+            }
+
             \Log::error('Error creating product in DB: ' . $e->getMessage());
             return redirect()->back()->withErrors(['error' => 'Failed to create product via DB: ' . $e->getMessage()])->withInput();
         }
@@ -161,6 +239,8 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
+        $product->load('galleryImages');
+
         return Inertia::render('Products/Edit', [
             'product' => [
                 'id' => $product->id,
@@ -174,6 +254,11 @@ class ProductController extends Controller
                 'stock_count' => $product->stock_count,
                 'gst' => $product->gst,
                 'image' => $product->image,
+                'gallery_images' => $product->galleryImages->map(fn (ProductImage $image) => [
+                    'id' => $image->id,
+                    'image_path' => $image->image_path,
+                    'sort_order' => $image->sort_order,
+                ])->values(),
                 'category' => $product->category()->exists() ? [
                     'id' => $product->category()->first()->id,
                     'name' => $product->category()->first()->name
@@ -219,7 +304,11 @@ class ProductController extends Controller
                 'gst' => 'nullable|numeric',
                 'stock_count' => 'required|integer',
                 'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-                '_delete_image' => 'nullable'
+                '_delete_image' => 'nullable',
+                'additional_images' => 'nullable|array',
+                'additional_images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+                'deleted_gallery_images' => 'nullable|string',
+                'gallery_order' => 'nullable|string',
             ]);
             
             $updateData = [
@@ -235,8 +324,18 @@ class ProductController extends Controller
                 'stock_count' => $request->stock_count
             ];
 
-            // Handle image deletion
-            if ($request->has('_delete_image') && 
+            $deletedGalleryImageIds = collect(json_decode($request->input('deleted_gallery_images', '[]'), true))
+                ->filter(fn ($id) => is_numeric($id))
+                ->map(fn ($id) => (int) $id)
+                ->values();
+            $galleryOrder = collect(json_decode($request->input('gallery_order', '[]'), true))
+                ->filter(fn ($id) => is_numeric($id))
+                ->map(fn ($id) => (int) $id)
+                ->values();
+
+            DB::transaction(function () use ($request, $product, &$updateData, $deletedGalleryImageIds, $galleryOrder) {
+                // Handle image deletion
+                if ($request->has('_delete_image') && 
                 (
                     $request->input('_delete_image') === '1' || 
                     $request->input('_delete_image') === 1 || 
@@ -245,10 +344,9 @@ class ProductController extends Controller
                 )
             ) {
                 \Log::info('Deleting image for product: ' . $product->id);
-                // Delete the existing image file if it exists
-                if ($product->image && \Illuminate\Support\Facades\Storage::disk('public')->exists($product->image)) {
+                if ($product->image) {
                     try {
-                        \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image);
+                        $this->deleteStoredImage($product->image);
                         \Log::info('Image file deleted from storage: ' . $product->image);
                     } catch (\Exception $e) {
                         \Log::error('Failed to delete image file: ' . $e->getMessage());
@@ -258,8 +356,7 @@ class ProductController extends Controller
                 }
                 $updateData['image'] = null;
             }
-            // Handle image upload if a new image is provided
-            elseif ($request->hasFile('image')) {
+                elseif ($request->hasFile('image')) {
                 \Log::info('Uploading new image for product: ' . $product->id);
                 \Log::info('Image file details:', [
                     'name' => $request->file('image')->getClientOriginalName(),
@@ -271,18 +368,12 @@ class ProductController extends Controller
                 ]);
                 
                 try {
-                    // Delete the existing image file if it exists
-                    if ($product->image && \Illuminate\Support\Facades\Storage::disk('public')->exists($product->image)) {
-                         \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image);
+                    if ($product->image) {
+                        $this->deleteStoredImage($product->image);
                         \Log::info('Previous image deleted from storage: ' . $product->image);
                     }
                     
-                    // Use storage driver to store the file
-                    $file = $request->file('image');
-                    $fileName = time() . '_' . $file->getClientOriginalName();
-                    
-                    $path = $file->storeAs('product_images', $fileName, 'public');
-                    $updateData['image'] = $path; // 'product_images/filename.ext'
+                    $updateData['image'] = $this->storeProductImage($request->file('image'));
                     
                     \Log::info('New image stored at: ' . $updateData['image']);
                     
@@ -298,19 +389,48 @@ class ProductController extends Controller
                     \Log::error('Error trace: ' . $e->getTraceAsString());
                     throw new \Exception('Failed to upload image: ' . $e->getMessage());
                 }
-            } else {
-                \Log::info('No image changes for product: ' . $product->id);
-            }
+                } else {
+                    \Log::info('No image changes for product: ' . $product->id);
+                }
+
+                if ($deletedGalleryImageIds->isNotEmpty()) {
+                    $imagesToDelete = $product->galleryImages()->whereIn('id', $deletedGalleryImageIds)->get();
+
+                    foreach ($imagesToDelete as $galleryImage) {
+                        $this->deleteStoredImage($galleryImage->image_path);
+                        $galleryImage->delete();
+                    }
+                }
+
+                $remainingGalleryImages = $product->galleryImages()->get()->keyBy('id');
+                foreach ($galleryOrder as $index => $imageId) {
+                    $galleryImage = $remainingGalleryImages->get($imageId);
+                    if ($galleryImage) {
+                        $galleryImage->update(['sort_order' => $index]);
+                    }
+                }
+
+                $nextSortOrder = $product->galleryImages()->max('sort_order');
+                $nextSortOrder = is_null($nextSortOrder) ? 0 : $nextSortOrder + 1;
+
+                $this->createGalleryImages(
+                    $product,
+                    $request->file('additional_images', []),
+                    $nextSortOrder
+                );
+
+                $product->update($updateData);
+            });
 
             \Log::info('Update data:', $updateData);
-            $result = $product->update($updateData);
+            $result = true;
             \Log::info('Update result:', [$result]);
 
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Product updated successfully',
-                    'product' => $product->fresh()
+                    'product' => $product->fresh()->load('galleryImages')
                 ]);
             }
             

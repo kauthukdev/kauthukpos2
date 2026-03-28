@@ -20,6 +20,8 @@ Route::get('/', function () {
     ]);
 });
 
+Route::view('/catalogue', 'catalogue')->name('catalogue.index');
+
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');

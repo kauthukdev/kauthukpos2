@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --brand-bg: #FDFBF7;
+        --brand-brown: #6b2f1a;
+        --brand-red: #6b2f1a;
+        --brand-gold: #C59353;
+    }
+
+    body {
+        background-color: var(--brand-bg);
+        color: var(--brand-brown);
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+}
+
+@layer components {
+    .category-style {
+        font-weight: bolder;
+        font-size: 14px;
+        font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .catalogue-announcement-bar {
+        background: linear-gradient(135deg, #b38d4a 0%, #d4a762 100%);
+        color: #fff;
+        padding: 4px 0;
+        overflow: hidden;
+    }
+
+    .catalogue-announcement-marquee {
+        @apply w-full overflow-hidden;
+    }
+
+    .catalogue-announcement-content {
+        display: flex;
+        align-items: center;
+        gap: 60px;
+        white-space: nowrap;
+        animation: catalogueAnnouncementSlide 30s linear infinite;
+        font-size: 12px;
+        font-weight: 400;
+    }
+
+    .catalogue-image-frame {
+        @apply flex w-full items-center justify-center rounded-md px-6 py-6;
+        min-height: 18rem;
+    }
+
+    .catalogue-image-surface {
+        @apply bg-white/70;
+        box-shadow: inset 0 0 0 1px rgba(107, 47, 26, 0.08);
+    }
+
+    .catalogue-image-element {
+        @apply h-full w-full object-contain;
+        max-height: 18rem;
+    }
+
+    @screen lg {
+        .catalogue-image-frame {
+            min-height: 24rem;
+        }
+
+        .catalogue-image-element {
+            max-height: 24rem;
+        }
+    }
+}
+
+@keyframes catalogueAnnouncementSlide {
+    0% {
+        transform: translateX(100%);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+@layer utilities {
+    .bg-brand-red {
+        background-color: var(--brand-red);
+    }
+
+    .bg-brand-brown {
+        background-color: var(--brand-brown);
+    }
+
+    .text-brand-brown {
+        color: var(--brand-brown);
+    }
+
+    .text-brand-gold {
+        color: var(--brand-gold);
+    }
+
+    .border-brand-gold {
+        border-color: var(--brand-gold);
+    }
+
+    .border-brand-brown {
+        border-color: var(--brand-brown);
+    }
+}

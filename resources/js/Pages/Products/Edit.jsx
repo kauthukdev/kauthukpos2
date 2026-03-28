@@ -1,17 +1,25 @@
-import { useForm } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { toPublicPath } from '@/utils/assetPath';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import Swal from 'sweetalert2';
 
+const moveItem = (items, fromIndex, toIndex) => {
+    const nextItems = [...items];
+    const [movedItem] = nextItems.splice(fromIndex, 1);
+    nextItems.splice(toIndex, 0, movedItem);
+    return nextItems;
+};
+
 const Edit = (props) => {
     const { product, categories } = props;
     const [deleteImage, setDeleteImage] = useState(false);
-
-    const { data, setData, put, processing, errors } = useForm({
+    const [galleryImages, setGalleryImages] = useState(product.gallery_images ?? []);
+    const [deletedGalleryImageIds, setDeletedGalleryImageIds] = useState([]);
+    const [data, setData] = useState({
         id: product.id,
         title: product.name,
         product_code: product.product_code,
@@ -19,26 +27,57 @@ const Edit = (props) => {
         cost_price: product.cost_price,
         stock_status: product.stock_status,
         image: null,
+        additionalImages: [],
         category: product.category ? product.category.id : '',
         hsncode: product.hsncode,
         stock_count: product.stock_count,
         gst: product.gst,
-        _delete_image: false
     });
+    const [errors, setErrors] = useState({});
+    const [processing, setProcessing] = useState(false);
 
-    // Update the _delete_image value in the form data when deleteImage state changes
-    useEffect(() => {
-        setData('_delete_image', deleteImage);
-    }, [deleteImage]);
+    const setField = (field, value) => {
+        setData((current) => ({
+            ...current,
+            [field]: value,
+        }));
+    };
 
-    const submit = (e) => {
-        e.preventDefault();
+    const removePendingImage = (indexToRemove) => {
+        setData((current) => ({
+            ...current,
+            additionalImages: current.additionalImages.filter((_, index) => index !== indexToRemove),
+        }));
+    };
 
-        // Create a new FormData object for the request
+    const removeExistingGalleryImage = (imageId) => {
+        setDeletedGalleryImageIds((current) => [...current, imageId]);
+        setGalleryImages((current) => current.filter((image) => image.id !== imageId));
+    };
+
+    const moveGalleryImageUp = (index) => {
+        if (index === 0) {
+            return;
+        }
+
+        setGalleryImages((current) => moveItem(current, index, index - 1));
+    };
+
+    const moveGalleryImageDown = (index) => {
+        if (index === galleryImages.length - 1) {
+            return;
+        }
+
+        setGalleryImages((current) => moveItem(current, index, index + 1));
+    };
+
+    const submit = async (event) => {
+        event.preventDefault();
+        setProcessing(true);
+        setErrors({});
+
         const formData = new FormData();
-
-        // Append all form fields with the correct names
-        formData.append('_method', 'PUT'); // Laravel requires this for PUT requests
+        formData.append('_method', 'PUT');
         formData.append('title', data.title);
         formData.append('product_code', data.product_code);
         formData.append('category', data.category);
@@ -48,88 +87,55 @@ const Edit = (props) => {
         formData.append('hsncode', data.hsncode);
         formData.append('gst', data.gst);
         formData.append('stock_count', data.stock_count);
+        formData.append('_delete_image', deleteImage ? '1' : '0');
+        formData.append('deleted_gallery_images', JSON.stringify(deletedGalleryImageIds));
+        formData.append('gallery_order', JSON.stringify(galleryImages.map((image) => image.id)));
 
-        // Handle image deletion or update
-        if (deleteImage) {
-            // Explicitly set _delete_image to true as a string
-            formData.append('_delete_image', '1');
-            console.log('Deleting image:', deleteImage);
-        } else if (data.image instanceof File) {
-            // Make sure we're appending the actual File object
-            // Create a new file with a unique name to avoid caching issues
-            const uniqueFileName = `${Date.now()}_${data.image.name}`;
-            const newFile = new File([data.image], uniqueFileName, { type: data.image.type });
-
-            formData.append('image', newFile);
-            console.log('Updating image with:', newFile);
-            console.log('Image file type:', newFile.type);
-            console.log('Image file size:', newFile.size);
-            console.log('Image file name:', newFile.name);
-
-            // Explicitly set _delete_image to false
-            formData.append('_delete_image', '0');
-        } else {
-            // If neither deleting nor updating, explicitly set _delete_image to false
-            formData.append('_delete_image', '0');
+        if (data.image instanceof File) {
+            formData.append('image', data.image);
         }
 
-        // Log the form data for debugging
-        console.log('Form data entries:');
-        for (let [key, value] of formData.entries()) {
-            console.log(`${key}: ${value}`);
-        }
+        data.additionalImages.forEach((file) => {
+            formData.append('additional_images[]', file);
+        });
 
-        // Show the success popup first
-        const showPopupAndRedirect = async () => {
-            try {
-                console.log('Submitting form with deleteImage state:', deleteImage);
-                console.log('Form data _delete_image value:', formData.get('_delete_image'));
+        try {
+            const response = await fetch(route('products.update', product.id), {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    Accept: 'application/json',
+                },
+            });
 
-                // Check if the image file is properly included in the FormData
-                if (formData.has('image')) {
-                    const imageFile = formData.get('image');
-                    console.log('Image file in FormData:', imageFile.name, imageFile.type, imageFile.size);
+            if (!response.ok) {
+                const payload = await response.json();
+                if (payload.errors) {
+                    setErrors(payload.errors);
                 }
 
-                // Use a direct fetch approach for all submissions
-                const response = await fetch(route('products.update', product.id), {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Accept': 'application/json',
-                    },
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to update product');
-                }
-
-                // Show success popup
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: 'Product updated successfully',
-                    confirmButtonText: 'OK',
-                });
-
-                // Redirect
-                window.location.href = route('products.index');
-            } catch (error) {
-                // Show error popup
-                console.error('Error during form submission:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error!',
-                    text: error.message || 'Failed to update product. Please check the form for errors.',
-                    confirmButtonText: 'OK',
-                });
+                throw new Error(payload.message || 'Failed to update product');
             }
-        };
 
-        // Execute the async function
-        showPopupAndRedirect();
+            await Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: 'Product updated successfully',
+                confirmButtonText: 'OK',
+            });
+
+            window.location.href = route('products.index');
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: error.message || 'Failed to update product. Please check the form for errors.',
+                confirmButtonText: 'OK',
+            });
+        } finally {
+            setProcessing(false);
+        }
     };
 
     return (
@@ -155,9 +161,7 @@ const Edit = (props) => {
                                                 name="category"
                                                 value={data.category}
                                                 className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-[#7267ef] focus:ring focus:ring-[#7267ef] focus:ring-opacity-50 transition-colors h-12"
-                                                onChange={(e) => {
-                                                    setData('category', e.target.value);
-                                                }}
+                                                onChange={(event) => setField('category', event.target.value)}
                                                 required
                                             >
                                                 <option value="">Select a category</option>
@@ -169,14 +173,14 @@ const Edit = (props) => {
                                             </select>
                                             <InputError message={errors.category} className="mt-2" />
                                         </div>
-                                        <input type='hidden' name='product_code' className='product_code' id='product_code' value={data.product_code} />
+                                        <input type="hidden" name="product_code" value={data.product_code} />
                                         <div>
                                             <InputLabel htmlFor="title" value="Product Title *" />
                                             <TextInput
                                                 id="title"
                                                 className="mt-1 block w-full h-12"
                                                 value={data.title}
-                                                onChange={(e) => setData('title', e.target.value)}
+                                                onChange={(event) => setField('title', event.target.value)}
                                                 required
                                                 isFocused
                                                 autoComplete="name"
@@ -193,7 +197,7 @@ const Edit = (props) => {
                                                 id="stock_count"
                                                 className="mt-1 block w-full"
                                                 value={data.stock_count}
-                                                onChange={(e) => setData('stock_count', e.target.value)}
+                                                onChange={(event) => setField('stock_count', event.target.value)}
                                                 required
                                             />
                                             <InputError className="mt-2" message={errors.stock_count} />
@@ -205,7 +209,7 @@ const Edit = (props) => {
                                                 id="hsncode"
                                                 className="mt-1 block w-full"
                                                 value={data.hsncode}
-                                                onChange={(e) => setData('hsncode', e.target.value)}
+                                                onChange={(event) => setField('hsncode', event.target.value)}
                                                 required
                                             />
                                             <InputError className="mt-2" message={errors.hsncode} />
@@ -217,7 +221,7 @@ const Edit = (props) => {
                                                 id="selling_price"
                                                 className="mt-1 block w-full"
                                                 value={data.selling_price}
-                                                onChange={(e) => setData('selling_price', e.target.value)}
+                                                onChange={(event) => setField('selling_price', event.target.value)}
                                                 required
                                             />
                                             <InputError className="mt-2" message={errors.selling_price} />
@@ -229,7 +233,7 @@ const Edit = (props) => {
                                                 id="cost_price"
                                                 className="mt-1 block w-full"
                                                 value={data.cost_price}
-                                                onChange={(e) => setData('cost_price', e.target.value)}
+                                                onChange={(event) => setField('cost_price', event.target.value)}
                                                 required
                                             />
                                             <InputError className="mt-2" message={errors.cost_price} />
@@ -241,13 +245,13 @@ const Edit = (props) => {
                                                 id="gst"
                                                 className="mt-1 block w-full"
                                                 value={data.gst}
-                                                onChange={(e) => setData('gst', e.target.value)}
+                                                onChange={(event) => setField('gst', event.target.value)}
                                                 required
                                             />
                                             <InputError className="mt-2" message={errors.gst} />
                                         </div>
 
-                                        <section className='max-w-xl'>
+                                        <section className="max-w-xl">
                                             <InputLabel value="Stock Status" />
                                             <div className="flex items-center mt-2">
                                                 <label className="mr-4 flex items-center">
@@ -256,7 +260,7 @@ const Edit = (props) => {
                                                         name="stock_status"
                                                         value="true"
                                                         checked={data.stock_status === true}
-                                                        onChange={(e) => setData('stock_status', true)}
+                                                        onChange={() => setField('stock_status', true)}
                                                         className="mr-2"
                                                     />
                                                     In Stock
@@ -267,7 +271,7 @@ const Edit = (props) => {
                                                         name="stock_status"
                                                         value="false"
                                                         checked={data.stock_status === false}
-                                                        onChange={(e) => setData('stock_status', false)}
+                                                        onChange={() => setField('stock_status', false)}
                                                         className="mr-2"
                                                     />
                                                     Out of Stock
@@ -275,89 +279,162 @@ const Edit = (props) => {
                                             </div>
                                             <InputError message={errors.stock_status} className="mt-2" />
                                         </section>
+
                                         <div>
-                                            <InputLabel htmlFor="image" value="Upload Product Image" />
-                                            {product.image && !deleteImage && (
+                                            <InputLabel htmlFor="image" value="Primary Product Image" />
+                                            {product.image && !deleteImage ? (
                                                 <div className="mb-4">
                                                     <div className="flex items-center justify-between mb-2">
-                                                        <p className="text-sm text-gray-600">Current Image:</p>
+                                                        <p className="text-sm text-gray-600">Current Primary Image:</p>
                                                         <button
                                                             type="button"
-                                                            onClick={() => {
-                                                                setDeleteImage(true);
-                                                                console.log('Delete image button clicked, setting deleteImage to true');
-                                                            }}
+                                                            onClick={() => setDeleteImage(true)}
                                                             className="text-red-500 hover:text-red-700 text-sm flex items-center"
                                                         >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
                                                             Delete Image
                                                         </button>
                                                     </div>
                                                     <img
-                                                        src={`/storage/${product.image}`}
+                                                        src={toPublicPath(`/storage/${product.image}`)}
                                                         alt={product.name}
                                                         className="w-40 h-40 object-cover border rounded-md"
                                                     />
                                                 </div>
-                                            )}
-                                            {deleteImage && (
+                                            ) : null}
+                                            {deleteImage ? (
                                                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                                                     <div className="flex items-center justify-between mb-2">
-                                                        <p className="text-sm text-red-600">Image will be deleted upon save</p>
+                                                        <p className="text-sm text-red-600">
+                                                            Primary image will be deleted upon save
+                                                        </p>
                                                         <button
                                                             type="button"
-                                                            onClick={() => {
-                                                                setDeleteImage(false);
-                                                                console.log('Cancel delete button clicked, setting deleteImage to false');
-                                                            }}
+                                                            onClick={() => setDeleteImage(false)}
                                                             className="text-blue-500 hover:text-blue-700 text-sm"
                                                         >
                                                             Cancel
                                                         </button>
                                                     </div>
                                                 </div>
-                                            )}
+                                            ) : null}
                                             <input
                                                 type="file"
                                                 id="image"
                                                 name="image"
                                                 className="mt-1 block w-full"
-                                                onChange={(e) => {
-                                                    if (e.target.files && e.target.files[0]) {
-                                                        const file = e.target.files[0];
-                                                        console.log('File selected:', file);
-                                                        console.log('File type:', file.type);
-                                                        console.log('File size:', file.size);
-                                                        console.log('File name:', file.name);
-
-                                                        // Ensure it's a valid image file
-                                                        if (file.type.startsWith('image/')) {
-                                                            // Create a preview
-                                                            const reader = new FileReader();
-                                                            reader.onload = (event) => {
-                                                                console.log('File loaded successfully');
-                                                            };
-                                                            reader.readAsDataURL(file);
-
-                                                            setData('image', file);
-                                                            setDeleteImage(false);
-                                                        } else {
-                                                            console.error('Invalid file type. Please select an image file.');
-                                                            // Clear the file input
-                                                            e.target.value = '';
-                                                        }
+                                                onChange={(event) => {
+                                                    const file = event.target.files?.[0] ?? null;
+                                                    setField('image', file);
+                                                    if (file) {
+                                                        setDeleteImage(false);
                                                     }
                                                 }}
                                                 accept="image/*"
                                             />
                                             <p className="text-xs text-gray-500 mt-1">
-                                                {!deleteImage ? "Leave empty to keep the current image" : "Upload a new image or leave empty"}
+                                                Leave empty to keep the current primary image.
                                             </p>
                                             <InputError className="mt-2" message={errors.image} />
                                         </div>
                                     </div>
+                                </section>
+
+                                <section className="space-y-4">
+                                    <div>
+                                        <InputLabel value="Existing Gallery Images" />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Reorder with the arrow buttons or delete individual gallery images.
+                                        </p>
+                                    </div>
+
+                                    {galleryImages.length > 0 ? (
+                                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                            {galleryImages.map((galleryImage, index) => (
+                                                <div key={galleryImage.id} className="rounded-lg border border-gray-200 p-4">
+                                                    <img
+                                                        src={toPublicPath(`/storage/${galleryImage.image_path}`)}
+                                                        alt={`Gallery image ${index + 1}`}
+                                                        className="h-40 w-full rounded-md object-cover"
+                                                    />
+                                                    <div className="mt-3 flex items-center justify-between gap-2">
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => moveGalleryImageUp(index)}
+                                                                disabled={index === 0}
+                                                                className="rounded border px-3 py-1 text-sm disabled:opacity-50"
+                                                            >
+                                                                Up
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => moveGalleryImageDown(index)}
+                                                                disabled={index === galleryImages.length - 1}
+                                                                className="rounded border px-3 py-1 text-sm disabled:opacity-50"
+                                                            >
+                                                                Down
+                                                            </button>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeExistingGalleryImage(galleryImage.id)}
+                                                            className="text-sm text-red-600 hover:text-red-700"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500">
+                                            No additional gallery images yet.
+                                        </div>
+                                    )}
+                                </section>
+
+                                <section>
+                                    <InputLabel htmlFor="additional_images" value="Add More Gallery Images" />
+                                    <input
+                                        type="file"
+                                        id="additional_images"
+                                        className="mt-1 block w-full"
+                                        onChange={(event) =>
+                                            setField('additionalImages', Array.from(event.target.files ?? []))
+                                        }
+                                        accept="image/*"
+                                        multiple
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        New gallery images will be appended after the current ordered gallery.
+                                    </p>
+                                    <InputError className="mt-2" message={errors.additional_images} />
+                                    <InputError className="mt-2" message={errors['additional_images.0']} />
+
+                                    {data.additionalImages.length > 0 ? (
+                                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                            {data.additionalImages.map((file, index) => (
+                                                <div
+                                                    key={`${file.name}-${index}`}
+                                                    className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-sm font-medium text-gray-900">{file.name}</p>
+                                                        <p className="text-xs text-gray-500">
+                                                            {(file.size / 1024).toFixed(0)} KB
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removePendingImage(index)}
+                                                        className="ml-3 text-sm text-red-600 hover:text-red-700"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : null}
                                 </section>
 
                                 <div className="flex justify-end mt-6">
@@ -377,4 +454,4 @@ const Edit = (props) => {
     );
 };
 
-export default Edit; 
+export default Edit;

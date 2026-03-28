@@ -18,6 +18,11 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
     </head>
     <body class="font-sans antialiased">
+        <script>
+            window.appConfig = {
+                baseUrl: @json(request()->getBaseUrl()),
+            };
+        </script>
         @inertia
     </body>
 </html>
