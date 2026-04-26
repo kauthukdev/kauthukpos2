@@ -310,7 +310,11 @@ export default function Index({ auth, products, filters }) {
                                                     <div className="flex items-center space-x-4">
                                                         {(auth.user.permissions.includes('PRODUCT_EDIT') || isAdmin) && (
                                                             <Link
-                                                                href={route('products.edit', product.id)}
+                                                                href={route('products.edit', {
+                                                                    product: product.id,
+                                                                    search: filters.search || undefined,
+                                                                    page: products.current_page,
+                                                                })}
                                                                 className="text-[#7267ef] hover:text-[#6357df]"
                                                             >
                                                                 Edit

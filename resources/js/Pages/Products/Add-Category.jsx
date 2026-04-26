@@ -1,5 +1,5 @@
 import { useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
@@ -9,12 +9,29 @@ import Swal from 'sweetalert2';
 
 export default function Create({ auth, roles }) {
     const { data, setData, post, processing, errors } = useForm({
-        name: ''
+        name: '',
+        icon: null,
     });
+    const [iconPreview, setIconPreview] = useState(null);
+
+    useEffect(() => {
+        if (!(data.icon instanceof File)) {
+            setIconPreview(null);
+            return undefined;
+        }
+
+        const previewUrl = URL.createObjectURL(data.icon);
+        setIconPreview(previewUrl);
+
+        return () => {
+            URL.revokeObjectURL(previewUrl);
+        };
+    }, [data.icon]);
 
     const submit = (e) => {
         e.preventDefault();
         post(route('products.category.store'), {
+            forceFormData: true,
             onSuccess: () => {
                 Swal.fire({
                     icon: 'success',
@@ -50,6 +67,29 @@ export default function Create({ auth, roles }) {
                                             required
                                         />
                                         <InputError message={errors.name} className="mt-2" />
+                                    </div>
+
+                                    <div className="col-span-1">
+                                        <InputLabel htmlFor="icon" value="Category Icon" className="text-gray-700 text-sm font-bold mb-2" />
+                                        <input
+                                            id="icon"
+                                            name="icon"
+                                            type="file"
+                                            accept=".jpg,.jpeg,.png,.webp,.svg"
+                                            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-[#7267ef] file:px-4 file:py-2 file:text-white"
+                                            onChange={(e) => setData('icon', e.target.files?.[0] ?? null)}
+                                        />
+                                        <p className="mt-2 text-sm text-gray-500">Optional. Recommended for catalogue header navigation.</p>
+                                        <InputError message={errors.icon} className="mt-2" />
+
+                                        {iconPreview ? (
+                                            <div className="mt-4">
+                                                <p className="mb-2 text-sm font-medium text-gray-700">Preview</p>
+                                                <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 p-2">
+                                                    <img src={iconPreview} alt="Category icon preview" className="h-full w-full object-contain" />
+                                                </div>
+                                            </div>
+                                        ) : null}
                                     </div>
                                 </div>
 

@@ -15,7 +15,7 @@ const moveItem = (items, fromIndex, toIndex) => {
 };
 
 const Edit = (props) => {
-    const { product, categories } = props;
+    const { product, categories, returnFilters } = props;
     const [deleteImage, setDeleteImage] = useState(false);
     const [galleryImages, setGalleryImages] = useState(product.gallery_images ?? []);
     const [deletedGalleryImageIds, setDeletedGalleryImageIds] = useState([]);
@@ -35,6 +35,10 @@ const Edit = (props) => {
     });
     const [errors, setErrors] = useState({});
     const [processing, setProcessing] = useState(false);
+    const indexRouteParams = {
+        ...(returnFilters?.search ? { search: returnFilters.search } : {}),
+        ...(returnFilters?.page ? { page: returnFilters.page } : {}),
+    };
 
     const setField = (field, value) => {
         setData((current) => ({
@@ -125,7 +129,7 @@ const Edit = (props) => {
                 confirmButtonText: 'OK',
             });
 
-            window.location.href = route('products.index');
+            window.location.href = route('products.index', indexRouteParams);
         } catch (error) {
             Swal.fire({
                 icon: 'error',

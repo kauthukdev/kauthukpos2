@@ -29,7 +29,7 @@ class CatalogueTest extends TestCase
 
     public function test_catalogue_categories_endpoint_returns_only_active_categories(): void
     {
-        Category::create(['name' => 'Decor', 'active' => true]);
+        Category::create(['name' => 'Decor', 'active' => true, 'icon' => 'category-icons/decor.png']);
         Category::create(['name' => 'Hidden', 'active' => false]);
 
         $response = $this->getJson('/api/catalogue/categories');
@@ -37,7 +37,11 @@ class CatalogueTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonCount(1)
-            ->assertJsonFragment(['name' => 'Decor'])
+            ->assertJsonFragment([
+                'name' => 'Decor',
+                'icon' => 'category-icons/decor.png',
+                'icon_url' => '/storage/category-icons/decor.png',
+            ])
             ->assertJsonMissing(['name' => 'Hidden']);
     }
 

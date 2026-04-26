@@ -237,7 +237,7 @@ class ProductController extends Controller
         }
     }
 
-    public function edit(Product $product)
+    public function edit(Request $request, Product $product)
     {
         $product->load('galleryImages');
 
@@ -264,7 +264,11 @@ class ProductController extends Controller
                     'name' => $product->category()->first()->name
                 ] : null
             ],
-            'categories' => Category::all()
+            'categories' => Category::all(),
+            'returnFilters' => array_filter([
+                'search' => $request->input('search'),
+                'page' => $request->input('page'),
+            ], fn ($value) => !is_null($value) && $value !== ''),
         ]);
     }
 

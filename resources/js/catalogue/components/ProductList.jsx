@@ -16,7 +16,6 @@ function buildParams(category, search, page) {
 }
 
 export default function ProductList({ category, search }) {
-    const [debouncedSearch, setDebouncedSearch] = useState(search);
     const [pages, setPages] = useState([]);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
@@ -26,19 +25,11 @@ export default function ProductList({ category, search }) {
 
     useEffect(() => {
         const timeoutId = window.setTimeout(() => {
-            setDebouncedSearch(search);
-        }, 500);
-
-        return () => window.clearTimeout(timeoutId);
-    }, [search]);
-
-    useEffect(() => {
-        const timeoutId = window.setTimeout(() => {
             loadProducts(1, false);
         }, 0);
 
         return () => window.clearTimeout(timeoutId);
-    }, [category, debouncedSearch]);
+    }, [category, search]);
 
     async function loadProducts(nextPage, append) {
         if (append) {
@@ -52,7 +43,7 @@ export default function ProductList({ category, search }) {
 
         try {
             const response = await window.axios.get(window.catalogueConfig.endpoints.products, {
-                params: buildParams(category, debouncedSearch, nextPage),
+                params: buildParams(category, search, nextPage),
             });
 
             const payload = response.data;

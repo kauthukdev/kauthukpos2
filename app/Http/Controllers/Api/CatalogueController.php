@@ -14,12 +14,19 @@ class CatalogueController extends Controller
     public function categories(): JsonResponse
     {
         $categories = Category::query()
-            ->select(['id', 'name'])
+            ->select(['id', 'name', 'icon'])
             ->where('active', true)
             ->orderBy('name')
             ->get();
 
-        return response()->json($categories);
+        return response()->json(
+            $categories->map(fn (Category $category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'icon' => $category->icon,
+                'icon_url' => $category->icon_url,
+            ]),
+        );
     }
 
     public function products(Request $request): JsonResponse

@@ -86,6 +86,9 @@ export default function Category({ auth, categories }) {
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Icon
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Name
                                             </th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -96,6 +99,19 @@ export default function Category({ auth, categories }) {
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {filteredCategories.map((category) => (
                                             <tr key={category.id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    {category.icon_url ? (
+                                                        <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 p-2">
+                                                            <img
+                                                                src={category.icon_url}
+                                                                alt={`${category.name} icon`}
+                                                                className="h-full w-full object-contain"
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-sm text-gray-500">No icon</span>
+                                                    )}
+                                                </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="text-sm font-medium text-gray-900">
                                                         {category.name}

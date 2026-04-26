@@ -1,5 +1,5 @@
 import { useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
@@ -8,14 +8,31 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import Swal from 'sweetalert2';
 
 const Edit = ({ auth, category }) => {
-    const { data, setData, put, processing, errors } = useForm({
-        name: category.name
+    const { data, setData, post, processing, errors } = useForm({
+        name: category.name,
+        icon: null,
+        _method: 'put',
     });
+    const [iconPreview, setIconPreview] = useState(category.icon_url);
+
+    useEffect(() => {
+        if (!(data.icon instanceof File)) {
+            setIconPreview(category.icon_url ?? null);
+            return undefined;
+        }
+
+        const previewUrl = URL.createObjectURL(data.icon);
+        setIconPreview(previewUrl);
+
+        return () => {
+            URL.revokeObjectURL(previewUrl);
+        };
+    }, [category.icon_url, data.icon]);
 
     const submit = (e) => {
-        console.log(category);
         e.preventDefault();
-        put(route('products.category.update', category.id), {
+        post(route('products.category.update', category.id), {
+            forceFormData: true,
             onSuccess: () => {
                 Swal.fire({
                     icon: 'success',
@@ -50,6 +67,31 @@ const Edit = ({ auth, category }) => {
                                             required
                                         />
                                         <InputError message={errors.name} className="mt-2" />
+                                    </div>
+
+                                    <div className="col-span-1">
+                                        <InputLabel htmlFor="icon" value="Category Icon" className="text-gray-700 text-sm font-bold mb-2" />
+                                        <input
+                                            id="icon"
+                                            name="icon"
+                                            type="file"
+                                            accept=".jpg,.jpeg,.png,.webp,.svg"
+                                            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-[#7267ef] file:px-4 file:py-2 file:text-white"
+                                            onChange={(e) => setData('icon', e.target.files?.[0] ?? null)}
+                                        />
+                                        <p className="mt-2 text-sm text-gray-500">Leave empty to keep the current icon.</p>
+                                        <InputError message={errors.icon} className="mt-2" />
+
+                                        {iconPreview ? (
+                                            <div className="mt-4">
+                                                <p className="mb-2 text-sm font-medium text-gray-700">
+                                                    {data.icon ? 'New Preview' : 'Current Icon'}
+                                                </p>
+                                                <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 p-2">
+                                                    <img src={iconPreview} alt="Category icon preview" className="h-full w-full object-contain" />
+                                                </div>
+                                            </div>
+                                        ) : null}
                                     </div>
                                 </div>
 

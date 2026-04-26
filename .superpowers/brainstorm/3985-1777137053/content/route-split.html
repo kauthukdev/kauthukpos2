@@ -1,0 +1,43 @@
+<h2>Kauthuk Unified App</h2>
+<p class="subtitle">Current state in this repo and the target split you described</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Current</div>
+    <div class="mockup-body">
+      <div class="mock-nav">/ -> POS dashboard</div>
+      <div class="mock-content" style="margin-top:12px">/catalogue -> public catalogue</div>
+      <div class="mock-content" style="margin-top:12px">Auth/admin flows stay inside the same Laravel app</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Target</div>
+    <div class="mockup-body">
+      <div class="mock-nav">/ -> new ecommerce storefront</div>
+      <div class="mock-content" style="margin-top:12px">/pos -> existing POS app</div>
+      <div class="mock-content" style="margin-top:12px">/catalogue -> existing catalogue flow</div>
+      <div class="mock-content" style="margin-top:12px">Checkout: guest cart -> mobile OTP -> payment or COD</div>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons" style="margin-top:24px">
+  <div class="pros">
+    <h4>What stays unchanged</h4>
+    <ul>
+      <li>Admin and POS business logic</li>
+      <li>Catalogue route and product data source</li>
+      <li>Single Laravel + Inertia application</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>What needs to be added</h4>
+    <ul>
+      <li>Storefront pages matching the old ecommerce UI</li>
+      <li>Cart + checkout state for guest users</li>
+      <li>OTP verification and order placement flow</li>
+      <li>Online payment and cash on delivery handling</li>
+    </ul>
+  </div>
+</div>
